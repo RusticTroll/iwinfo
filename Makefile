@@ -3,12 +3,9 @@ IWINFO_SOVERSION   = $(if $(SOVERSION),$(SOVERSION),0)
 IWINFO_BACKENDS    = $(BACKENDS)
 IWINFO_CFLAGS      = $(CFLAGS) -Wall -std=gnu99 -fstrict-aliasing -Iinclude -I/usr/include/libnl3
 
-IWINFO_LIB         = libiwinfo.so
-IWINFO_LIB_LDFLAGS = $(LDFLAGS) -shared -Wl,-soname -Wl,$(IWINFO_LIB).$(IWINFO_SOVERSION)
 IWINFO_LIB_OBJ     = iwinfo_utils.o iwinfo_lib.o
 
 IWINFO_CLI         = iwinfo
-IWINFO_CLI_LDFLAGS = $(LDFLAGS) -L. -liwinfo
 IWINFO_CLI_OBJ     = iwinfo_cli.o
 
 
@@ -40,12 +37,8 @@ compile: clean $(IWINFO_LIB) $(IWINFO_CLI)
 %.o: %.c
 	$(CC) $(IWINFO_CFLAGS) $(FPIC) -c -o $@ $<
 
-$(IWINFO_LIB): $(IWINFO_LIB_OBJ)
-	$(CC) $(IWINFO_LDFLAGS) $(IWINFO_LIB_LDFLAGS) -o $(IWINFO_LIB).$(IWINFO_SOVERSION) $(IWINFO_LIB_OBJ) && \
-	ln -sf $(IWINFO_LIB).$(IWINFO_SOVERSION) $(IWINFO_LIB)
-
-$(IWINFO_CLI): $(IWINFO_CLI_OBJ)
-	$(CC) $(IWINFO_LDFLAGS) $(IWINFO_CLI_LDFLAGS) -o $(IWINFO_CLI) $(IWINFO_CLI_OBJ)
+$(IWINFO_CLI): $(IWINFO_CLI_OBJ) $(IWINFO_LIB_OBJ)
+	$(CC) $(IWINFO_LDFLAGS) $(IWINFO_CLI_LDFLAGS) -o $(IWINFO_CLI) $(IWINFO_CLI_OBJ) $(IWINFO_LIB_OBJ)
 
 clean:
 	rm -f *.o $(IWINFO_LIB) $(IWINFO_CLI)
