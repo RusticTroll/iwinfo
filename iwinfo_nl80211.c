@@ -22,12 +22,17 @@
  * Parts of this code are derived from the Linux iw utility.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <sys/stat.h>
 #include <limits.h>
 #include <glob.h>
 #include <fnmatch.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "iwinfo_nl80211.h"
 
@@ -401,34 +406,6 @@ static int nl80211_phy_idx_from_phy(const char *opt)
 	return nl80211_readint(buf);
 }
 
-static int nl80211_phy_idx_from_uci(const char *name)
-{
-	struct uci_section *s;
-	const char *opt;
-	int idx = -1;
-
-	s = iwinfo_uci_get_radio(name, "mac80211");
-	if (!s)
-		goto out;
-
-	opt = uci_lookup_option_string(uci_ctx, s, "path");
-	idx = nl80211_phy_idx_from_path(opt);
-	if (idx >= 0)
-		goto out;
-
-	opt = uci_lookup_option_string(uci_ctx, s, "macaddr");
-	idx = nl80211_phy_idx_from_macaddr(opt);
-	if (idx >= 0)
-		goto out;
-
-	opt = uci_lookup_option_string(uci_ctx, s, "phy");
-	idx = nl80211_phy_idx_from_phy(opt);
-
-out:
-	iwinfo_uci_free();
-	return idx;
-}
-
 static bool nl80211_is_ifname(const char *name)
 {
 	struct stat st;
@@ -458,8 +435,6 @@ static struct nl80211_msg_conveyor * nl80211_msg(const char *ifname,
 	else
 	{
 		phyidx = nl80211_phy_idx_from_phy(ifname);
-		if (phyidx < 0)
-			phyidx = nl80211_phy_idx_from_uci(ifname);
 	}
 
 	/* Valid ifidx must be greater than 0 */
@@ -818,8 +793,6 @@ static char * nl80211_phy2ifname(const char *ifname)
 		return NULL;
 
 	phyidx = nl80211_phy_idx_from_phy(ifname);
-	if (phyidx < 0)
-		phyidx = nl80211_phy_idx_from_uci(ifname);;
 	if (phyidx < 0)
 		return NULL;
 
@@ -1318,8 +1291,8 @@ static int nl80211_get_ssid(const char *ifname, char *buf)
 
 	/* failed, try to obtain Mesh ID */
 	if (sb.ssid[0] == 0)
-		iwinfo_ubus_query(res ? res : ifname, "mesh_id",
-		                  buf, IWINFO_ESSID_MAX_SIZE + 1);
+		nl80211_wpactl_query(ifname, "ssid", sb.ssid,
+							 IWINFO_ESSID_MAX_SIZE + 1);
 
 	return (sb.ssid[0] == 0) ? -1 : 0;
 }
@@ -3651,8 +3624,6 @@ static int nl80211_lookup_phyname(const char *section, char *buf)
 		idx = nl80211_phy_idx_from_path(section + 5);
 	else if (!strncmp(section, "macaddr=", 8))
 		idx = nl80211_phy_idx_from_macaddr(section + 8);
-	else
-		idx = nl80211_phy_idx_from_uci(section);
 
 	if (idx < 0)
 		return -1;

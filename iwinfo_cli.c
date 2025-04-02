@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <glob.h>
+#include <stdbool.h>
 
 #include "iwinfo.h"
 
